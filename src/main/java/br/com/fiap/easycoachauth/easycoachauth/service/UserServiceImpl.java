@@ -5,8 +5,10 @@ import br.com.fiap.easycoachauth.easycoachauth.dto.JwtDTO;
 import br.com.fiap.easycoachauth.easycoachauth.dto.UserCreateDTO;
 import br.com.fiap.easycoachauth.easycoachauth.dto.UserDTO;
 import br.com.fiap.easycoachauth.easycoachauth.entity.User;
+import br.com.fiap.easycoachauth.easycoachauth.rabbitmq.QueueSender;
 import br.com.fiap.easycoachauth.easycoachauth.repository.UserRepository;
 import br.com.fiap.easycoachauth.easycoachauth.security.JwtTokenUtil;
+import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,14 +23,18 @@ public class UserServiceImpl implements UserService {
     private final AuthenticationManager authenticationManager;
     private PasswordEncoder passwordEncoder;
     private UserRepository userRepository;
+    private AmqpTemplate queueSender;
+
     public UserServiceImpl(JwtTokenUtil jwtTokenUtil,
                            AuthenticationManager authenticationManager,
                            PasswordEncoder passwordEncoder,
-                           UserRepository userRepository){
+                           UserRepository userRepository,
+                           AmqpTemplate queueSender) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
+        this.queueSender = queueSender;
     }
 
     @Override
@@ -40,11 +46,13 @@ public class UserServiceImpl implements UserService {
         UserDTO userDTO = new UserDTO();
         userDTO.setId(savedUser.getId());
         userDTO.setUsername(savedUser.getUsername());
+        queueSender.convertAndSend("users.exchange", "routing-key-users", user.getUsername());
         return userDTO;
     }
+
     @Override
     public JwtDTO login(AuthDTO authDTO) {
-        try{
+        try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(authDTO.getUsername(), authDTO.getPassword())
             );
