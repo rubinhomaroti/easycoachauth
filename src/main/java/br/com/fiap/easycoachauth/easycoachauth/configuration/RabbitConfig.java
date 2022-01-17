@@ -20,7 +20,7 @@ public class RabbitConfig {
     }
 
     @Bean
-    Binding testeBinding(Queue usersQueue, DirectExchange exchange) {
+    Binding usersBinding(Queue usersQueue, DirectExchange exchange) {
         return BindingBuilder.bind(usersQueue).to(exchange).with("routing-key-users");
     }
 }
